@@ -12,7 +12,6 @@ export const DEMO_CRITERION_IDS = {
   CREATE_TICKET: "4b72a86f-c932-4de4-8492-c75eee6606ab",
   TICKET_HISTORY: "fd2dc7ae-0fe4-4e07-a488-2bad9c9e7856",
   TICKET_DETAILS: "7bd5abcd-bf83-49dc-8c7b-899244d80960",
-  LOGOUT: "66550107-a060-414d-b392-92821957bee3",
 } as const;
 
 export type DemoCatalogEntry = {
@@ -375,79 +374,6 @@ export const DEMO_CATALOG: DemoCatalogEntry[] = [
           },
           expectedOutcome:
             "The current ticket status is visible as Open.",
-        },
-      ]
-    ),
-  },
-  {
-    criterionId: DEMO_CRITERION_IDS.LOGOUT,
-    description:
-      "User can log out and return to the login screen.",
-    plan: makeValidatedPlan(
-      DEMO_CRITERION_IDS.LOGOUT,
-      "Verify the authenticated user can log out and be returned to the login screen.",
-      [
-        {
-          id: "logout-navigate",
-          tool: "BROWSER",
-          action: {
-            type: "navigate",
-            url: DEMO_ALLOWED_ORIGIN,
-          },
-          expectedOutcome:
-            "The login page loads before the user signs in.",
-        },
-        {
-          id: "logout-email",
-          tool: "BROWSER",
-          action: {
-            type: "fill",
-            selector: 'input[type="email"]',
-            value: "{{DEMO_USERNAME}}",
-          },
-          expectedOutcome:
-            "The demo email is entered before login.",
-        },
-        {
-          id: "logout-password",
-          tool: "BROWSER",
-          action: {
-            type: "fill",
-            selector: 'input[type="password"]',
-            value: "{{DEMO_PASSWORD}}",
-          },
-          expectedOutcome:
-            "The demo password is entered before login.",
-        },
-        {
-          id: "logout-login-submit",
-          tool: "BROWSER",
-          action: {
-            type: "click",
-            selector: 'button:has-text("Login")',
-          },
-          expectedOutcome:
-            "The user is authenticated and routed to the dashboard.",
-        },
-        {
-          id: "logout-click",
-          tool: "BROWSER",
-          action: {
-            type: "click",
-            selector: 'button:has-text("Logout")',
-          },
-          expectedOutcome:
-            "The authenticated session is ended and the app logs the user out.",
-        },
-        {
-          id: "logout-login-visible",
-          tool: "BROWSER",
-          action: {
-            type: "assertVisible",
-            selector: 'input[type="email"]',
-          },
-          expectedOutcome:
-            "The login screen is visible after logout.",
         },
       ]
     ),

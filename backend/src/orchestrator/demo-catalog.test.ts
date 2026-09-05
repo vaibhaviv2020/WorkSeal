@@ -102,7 +102,7 @@ function executionResult(
 }
 
 test("all catalog plans validate and carry the expected criterion IDs", () => {
-  assert.equal(DEMO_CATALOG.length, 6);
+  assert.equal(DEMO_CATALOG.length, 5);
 
   for (const item of DEMO_CATALOG) {
     assert.equal(item.plan.version, 1);
@@ -118,7 +118,6 @@ test("all catalog plans use meaningful assertions instead of generic placeholder
     [DEMO_CRITERION_IDS.DASHBOARD]: ["Open", "In Progress", "Resolved"],
     [DEMO_CRITERION_IDS.TICKET_HISTORY]: ["Ticket History"],
     [DEMO_CRITERION_IDS.TICKET_DETAILS]: ["Ticket Details", "OPEN"],
-    [DEMO_CRITERION_IDS.LOGOUT]: ['input[type="email"]'],
   };
 
   for (const item of DEMO_CATALOG) {
@@ -247,24 +246,6 @@ test("ticket details plan opens the seeded ticket and checks the details status"
   );
 });
 
-test("logout plan verifies the login screen after logout", () => {
-  const logout = DEMO_CATALOG.find(
-    (criterion) =>
-      criterion.criterionId ===
-      DEMO_CRITERION_IDS.LOGOUT
-  );
-
-  assert.ok(logout);
-
-  assert.ok(
-    logout?.plan.steps.some(
-      (step) =>
-        step.action.type === "assertVisible" &&
-        step.action.selector === 'input[type="email"]'
-    )
-  );
-});
-
 test("seedValidatedDemoCatalog clears stale plans and stores validated catalog plans", async () => {
   const updates: Array<{ where: { id: string }; data: { aiInterpretation: unknown } }> = [];
 
@@ -276,7 +257,6 @@ test("seedValidatedDemoCatalog clears stale plans and stores validated catalog p
           { id: DEMO_CRITERION_IDS.DASHBOARD },
           { id: DEMO_CRITERION_IDS.TICKET_HISTORY },
           { id: DEMO_CRITERION_IDS.TICKET_DETAILS },
-          { id: DEMO_CRITERION_IDS.LOGOUT },
           { id: DEMO_CRITERION_IDS.CREATE_TICKET },
         ],
       update: async (args: {
@@ -295,24 +275,18 @@ test("seedValidatedDemoCatalog clears stale plans and stores validated catalog p
     updates.filter(
       (entry) => entry.data.aiInterpretation === null
     ).length,
-    6
+    5
   );
 
   const seeded = updates.filter(
     (entry) => entry.data.aiInterpretation &&
       typeof entry.data.aiInterpretation === "object"
   );
-  assert.equal(seeded.length, 6);
+  assert.equal(seeded.length, 5);
   assert.ok(
     seeded.some(
       (entry) =>
         (entry as any).where.id === DEMO_CRITERION_IDS.LOGIN
-    )
-  );
-  assert.ok(
-    seeded.some(
-      (entry) =>
-        (entry as any).where.id === DEMO_CRITERION_IDS.LOGOUT
     )
   );
 });
@@ -325,7 +299,6 @@ test("seedValidatedDemoCatalog uses DB criterion.description for stored snapshot
     [DEMO_CRITERION_IDS.DASHBOARD]: "DB dashboard description",
     [DEMO_CRITERION_IDS.TICKET_HISTORY]: "DB ticket history description",
     [DEMO_CRITERION_IDS.TICKET_DETAILS]: "DB ticket details description",
-    [DEMO_CRITERION_IDS.LOGOUT]: "DB logout description",
   };
 
   const db = {
