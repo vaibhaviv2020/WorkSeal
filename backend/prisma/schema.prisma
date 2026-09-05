@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  BUYER
+  DEVELOPER
+}
+
+enum MilestoneStatus {
+  DRAFT
+  SUBMITTED
+  VERIFYING
+  NOT_READY
+  READY_FOR_APPROVAL
+  APPROVED
+  PAYMENT_PENDING
+  PAID
+  REVIEW_REQUIRED
+}
+
+enum VerificationRunStatus {
+  CREATED
+  PLANNING
+  READY
+  EXECUTING
+  EVIDENCE_COLLECTION
+  EVALUATING
+  RETRYING
+  COMPLETED
+  ERROR
+  ENVIRONMENT_FAILURE
+  HUMAN_REVIEW
+}
+
+enum VerificationResult {
+  PASS
+  FAIL
+  UNCERTAIN
+}
+
+enum VerificationTool {
+  BROWSER
+  API
+}
+
+enum VerificationTaskStatus {
+  CREATED
+  EXECUTING
+  COMPLETED
+  ERROR
+}
+
+enum EvidenceType {
+  SCREENSHOT
+  TRACE
+  API_RESPONSE
+  LOG
+}
+
+enum PaymentStatus {
+  CREATED
+  PAYMENT_PENDING
+  PAID
+  FAILED
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  email     String   @unique
+  role      UserRole
+  createdAt DateTime @default(now()) @map("created_at")
+
+  projects  Project[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Project {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner     User       @relation(fields: [ownerId], references: [id])
+  milestones Milestone[]
+
+  @@index([ownerId])
+  @@map("projects")
+}
+
+model Milestone {
+  id        String          @id @default(uuid()) @db.Uuid
+  projectId String          @map("project_id") @db.Uuid
+  name      String
+  amount    Int
+  currency  String
+  status    MilestoneStatus @default(DRAFT)
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  project           Project            @relation(fields: [projectId], references: [id])
+  criteria          Criterion[]
+  submissions       Submission[]
+  verificationRuns  VerificationRun[]
+  payments          Payment[]
+  auditLogs         AuditLog[]
+
+  @@index([projectId])
+  @@map("milestones")
+}
+
+model Criterion {
+  id              String   @id @default(uuid()) @db.Uuid
+  milestoneId     String   @map("milestone_id") @db.Uuid
+  description     String
+  blocking        Boolean  @default(true)
+  aiInterpretation Json?    @map("ai_interpretation")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  milestone          Milestone           @relation(fields: [milestoneId], references: [id])
+  verificationTasks  VerificationTask[]
+  evidence            Evidence[]
+
+  @@index([milestoneId])
+  @@map("criteria")
+}
+
+model Submission {
+  id             String   @id @default(uuid()) @db.Uuid
+  milestoneId    String   @map("milestone_id") @db.Uuid
+  version        Int
+  appUrl         String   @map("app_url")
+  credentialsRef Json     @map("credentials_ref")
+  submittedAt    DateTime @default(now()) @map("submitted_at")
+
+  milestone        Milestone         @relation(fields: [milestoneId], references: [id])
+  verificationRuns VerificationRun[]
+
+  @@index([milestoneId])
+  @@unique([milestoneId, version])
+  @@map("submissions")
+}
+
+model VerificationRun {
+  id           String              @id @default(uuid()) @db.Uuid
+  milestoneId  String              @map("milestone_id") @db.Uuid
+  submissionId String              @map("submission_id") @db.Uuid
+  status       VerificationRunStatus @default(CREATED)
+  overallResult VerificationResult? @map("overall_result")
+  startedAt    DateTime?            @map("started_at")
+  completedAt  DateTime?            @map("completed_at")
+  errorType    String?              @map("error_type")
+
+  milestone    Milestone          @relation(fields: [milestoneId], references: [id])
+  submission   Submission         @relation(fields: [submissionId], references: [id])
+  tasks        VerificationTask[]
+  evidence     Evidence[]
+  auditLogs    AuditLog[]
+
+  @@index([milestoneId])
+  @@index([submissionId])
+  @@map("verification_runs")
+}
+
+model VerificationTask {
+  id          String              @id @default(uuid()) @db.Uuid
+  runId       String              @map("run_id") @db.Uuid
+  criterionId String              @map("criterion_id") @db.Uuid
+  tool        VerificationTool
+  action      Json
+  status      VerificationTaskStatus @default(CREATED)
+  attempt     Int                 @default(0)
+  result      VerificationResult?
+  errorType   String?             @map("error_type")
+  startedAt   DateTime?           @map("started_at")
+  completedAt DateTime?           @map("completed_at")
+
+  run       VerificationRun @relation(fields: [runId], references: [id])
+  criterion Criterion       @relation(fields: [criterionId], references: [id])
+  evidence  Evidence[]
+
+  @@index([runId])
+  @@index([criterionId])
+  @@map("verification_tasks")
+}
+
+model Evidence {
+  id          String       @id @default(uuid()) @db.Uuid
+  runId       String       @map("run_id") @db.Uuid
+  taskId      String       @map("task_id") @db.Uuid
+  criterionId String       @map("criterion_id") @db.Uuid
+  type        EvidenceType
+  path        String
+  metadata    Json?
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  run       VerificationRun  @relation(fields: [runId], references: [id])
+  task      VerificationTask @relation(fields: [taskId], references: [id])
+  criterion Criterion        @relation(fields: [criterionId], references: [id])
+
+  @@index([runId])
+  @@index([criterionId])
+  @@map("evidence")
+}
+
+model Payment {
+  id            String        @id @default(uuid()) @db.Uuid
+  milestoneId   String        @map("milestone_id") @db.Uuid
+  provider      String
+  paymentLinkId String?       @map("payment_link_id")
+  referenceId   String        @unique @map("reference_id")
+  amount        Int
+  currency      String
+  status        PaymentStatus @default(CREATED)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  paidAt        DateTime?     @map("paid_at")
+
+  milestone Milestone @relation(fields: [milestoneId], references: [id])
+
+  @@index([milestoneId])
+  @@map("payments")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid
+  milestoneId String?  @map("milestone_id") @db.Uuid
+  runId       String?  @map("run_id") @db.Uuid
+  eventType   String   @map("event_type")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user      User?           @relation(fields: [userId], references: [id])
+  milestone Milestone?      @relation(fields: [milestoneId], references: [id])
+  run       VerificationRun? @relation(fields: [runId], references: [id])
+
+  @@index([userId])
+  @@index([milestoneId])
+  @@index([runId])
+  @@map("audit_logs")
+}
